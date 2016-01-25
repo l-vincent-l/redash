@@ -15,8 +15,21 @@ if [ "$(id -u)" != "0" ]; then
     exit 0
 fi
 
+DO_UPGRADE=true
+while getopts ":n" opt; do
+    case $opt in
+        n)
+            DO_UPGRADE=false
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" > $2
+            ;;
+    esac
+done
 # Base packages
-apt-get dist-upgrade
+if $DO_UPGRADE ; then
+    apt-get dist-upgrade
+fi
 apt-get update
 apt-get install -y python-pip python-dev nginx curl build-essential pwgen
 pip install -U setuptools
