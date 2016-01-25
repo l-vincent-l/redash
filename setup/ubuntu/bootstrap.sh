@@ -102,30 +102,30 @@ fi
 
 # Directories
 if [ ! -d "$REDASH_BASE_PATH" ]; then
-    sudo mkdir /opt/redash
-    sudo chown redash /opt/redash
-    sudo -u redash mkdir /opt/redash/logs
+    sudo mkdir $REDASH_BASE_PATH
+    sudo chown redash $REDASH_BASE_PATH
+    sudo -u redash mkdir $REDASH_BASE_PATH/logs
 fi
 
 # Default config file
-if [ ! -f "/opt/redash/.env" ]; then
-    sudo -u redash wget $FILES_BASE_URL"env" -O /opt/redash/.env
+if [ ! -f "$REDASH_BASE_PATH/.env" ]; then
+    sudo -u redash wget $FILES_BASE_URL"env" -O $REDASH_BASE_PATH/.env
 fi
 
 # Install latest version
 REDASH_VERSION=${REDASH_VERSION-0.7.1.b1015}
 LATEST_URL="https://github.com/getredash/redash/releases/download/v${REDASH_VERSION}/redash.$REDASH_VERSION.tar.gz"
-VERSION_DIR="/opt/redash/redash.$REDASH_VERSION"
+VERSION_DIR="$REDASH_BASE_PATH/redash.$REDASH_VERSION"
 REDASH_TARBALL=/tmp/redash.tar.gz
 
 if [ ! -d "$VERSION_DIR" ]; then
     sudo -u redash wget $LATEST_URL -O $REDASH_TARBALL
     sudo -u redash mkdir $VERSION_DIR
     sudo -u redash tar -C $VERSION_DIR -xvf $REDASH_TARBALL
-    ln -nfs $VERSION_DIR /opt/redash/current
-    ln -nfs /opt/redash/.env /opt/redash/current/.env
+    ln -nfs $VERSION_DIR $REDASH_BASE_PATH/current
+    ln -nfs $REDASH_BASE_PATH.env $REDASH_BASE_PATH/current/.env
 
-    cd /opt/redash/current
+    cd $REDASH_BASE_PATH/current
 
     # TODO: venv?
     pip install -r requirements.txt
@@ -139,12 +139,12 @@ if [ $pg_user_exists -ne 0 ]; then
     sudo -u postgres createuser redash --no-superuser --no-createdb --no-createrole
     sudo -u postgres createdb redash --owner=redash
 
-    cd /opt/redash/current
+    cd $REDASH_BASE_PATH/current
     sudo -u redash bin/run ./manage.py database create_tables
 fi
 
 # Create default admin user
-cd /opt/redash/current
+cd $REDASH_BASE_PATH/current
 # TODO: make sure user created only once
 # TODO: generate temp password and print to screen
 sudo -u redash bin/run ./manage.py users create --admin --password admin "Admin" "admin"
@@ -160,7 +160,7 @@ if [ $pg_user_exists -ne 0 ]; then
     sudo -u redash psql -c "grant select(id,name) ON users to redash_reader;" redash
     sudo -u redash psql -c "grant select on events, queries, dashboards, widgets, visualizations, query_results to redash_reader;" redash
 
-    cd /opt/redash/current
+    cd $REDASH_BASE_PATH/current
     sudo -u redash bin/run ./manage.py ds new -n "re:dash metadata" -t "pg" -o "{\"user\": \"redash_reader\", \"password\": \"$REDASH_READER_PASSWORD\", \"host\": \"localhost\", \"dbname\": \"redash\"}"
 fi
 
@@ -171,15 +171,15 @@ apt-get install -y libffi-dev libssl-dev
 apt-get install -y libmysqlclient-dev
 
 # Pip requirements for all data source types
-cd /opt/redash/current
+cd $REDASH_BASE_PATH/current
 pip install -r requirements_all_ds.txt
 
 # Setup supervisord + sysv init startup script
-sudo -u redash mkdir -p /opt/redash/supervisord
+sudo -u redash mkdir -p $REDASH_BASE_PATH/supervisord
 pip install supervisor==3.1.2 # TODO: move to requirements.txt
 
 # Get supervisord startup script
-sudo -u redash wget -O /opt/redash/supervisord/supervisord.conf $FILES_BASE_URL"supervisord.conf"
+sudo -u redash wget -O $REDASH_BASE_PATH/supervisord/supervisord.conf $FILES_BASE_URL"supervisord.conf"
 
 wget -O /etc/init.d/redash_supervisord $FILES_BASE_URL"redash_supervisord_init"
 add_service "redash_supervisord"
