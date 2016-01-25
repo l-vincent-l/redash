@@ -32,7 +32,7 @@ if $DO_UPGRADE ; then
 fi
 apt-get update
 apt-get install -y python-pip python-dev nginx curl build-essential pwgen
-pip install -U setuptools
+pip install -U virtualenv
 
 # redash user
 # TODO: check user doesn't exist yet?
@@ -117,9 +117,12 @@ REDASH_VERSION=${REDASH_VERSION-0.7.1.b1015}
 LATEST_URL="https://github.com/getredash/redash/releases/download/v${REDASH_VERSION}/redash.$REDASH_VERSION.tar.gz"
 VERSION_DIR="$REDASH_BASE_PATH/redash.$REDASH_VERSION"
 REDASH_TARBALL=/tmp/redash.tar.gz
+VENV=$REDASH_BASE_PATH/venv
 
 if [ ! -d "$VERSION_DIR" ]; then
     sudo -u redash wget $LATEST_URL -O $REDASH_TARBALL
+    sudo virtualenv $VENV
+    sudo source $VENV/bin/activate
     sudo -u redash mkdir $VERSION_DIR
     sudo -u redash tar -C $VERSION_DIR -xvf $REDASH_TARBALL
     ln -nfs $VERSION_DIR $REDASH_BASE_PATH/current
@@ -129,6 +132,7 @@ if [ ! -d "$VERSION_DIR" ]; then
 
     # TODO: venv?
     pip install -r requirements.txt
+    pip install -U setuptools
 fi
 
 # Create database / tables
@@ -189,3 +193,4 @@ rm /etc/nginx/sites-enabled/default
 wget -O /etc/nginx/sites-available/redash $FILES_BASE_URL"nginx_redash_site"
 ln -nfs /etc/nginx/sites-available/redash /etc/nginx/sites-enabled/redash
 service nginx restart
+deactivate
